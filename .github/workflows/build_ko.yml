@@ -27,7 +27,7 @@ jobs:
       - name: Install toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc-aarch64-linux-gnu  ccache
+          sudo apt-get install -y build-essential gcc-aarch64-linux-gnu ccache
 
       # 4. 准备内核构建环境
       - name: Prepare kernel
@@ -48,7 +48,8 @@ jobs:
           export STRIP=aarch64-linux-gnu-strip
           export OBJCOPY=aarch64-linux-gnu-objcopy
 
-          make oldconfig || true
+          # 自动确认 oldconfig 的默认值（避免交互卡住）
+          yes "" | make oldconfig
           make prepare
           make modules_prepare
 
@@ -74,4 +75,3 @@ jobs:
         with:
           name: my-module-ko
           path: my_module/*.ko
-
