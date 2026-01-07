@@ -1,1 +1,77 @@
+name: Build KO using kernel_xiaomi_sm8250_mod
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取你的仓库（包含 my_module 和 umi.config）
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2. 克隆内核树（lunar-release 分支）
+      - name: Clone kernel tree
+        run: |
+          git clone --depth=1 --branch=lunar-release \
+            https://github.com/yspbwx2010/kernel_xiaomi_sm8250_mod.git kernel_src
+          echo "KERNEL_SRC=$GITHUB_WORKSPACE/kernel_src" >> $GITHUB_ENV
+
+      # 3. 安装交叉编译工具链
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-aarch64-linux-gnu
+
+      # 4. 准备内核构建环境
+      - name: Prepare kernel
+        run: |
+          cd $KERNEL_SRC
+          cp $GITHUB_WORKSPACE/umi.config .config
+
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+
+          # 如果你确定内核需要 NDK Clang 10，可以在这里再加一步下载 NDK，
+          # 这里先用系统 clang 示例，你可以按需要改成 NDK 路径。
+          export CC=clang
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export LD=aarch64-linux-gnu-ld
+          export AR=aarch64-linux-gnu-ar
+          export NM=aarch64-linux-gnu-nm
+          export STRIP=aarch64-linux-gnu-strip
+          export OBJCOPY=aarch64-linux-gnu-objcopy
+
+          make oldconfig || true
+          make prepare
+          make modules_prepare
+
+      # 5. 编译你的模块
+      - name: Build module
+        run: |
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CC=clang
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export LD=aarch64-linux-gnu-ld
+          export AR=aarch64-linux-gnu-ar
+          export NM=aarch64-linux-gnu-nm
+          export STRIP=aarch64-linux-gnu-strip
+          export OBJCOPY=aarch64-linux-gnu-objcopy
+
+          cd my_module
+          make KERNEL_DIR=$KERNEL_SRC
+
+      # 6. 上传 .ko 文件
+      - name: Upload KO
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-module-ko
+          path: my_module/*.ko
 
